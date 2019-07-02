@@ -1,0 +1,422 @@
+## Install
+
+- Install **{rtweet}** from [CRAN](https://cran.r-project/package=rtweet).
+
+```{r}
+install.packages("rtweet")
+install.packages ("maps")
+```
+
+- Load **{rtweet}**
+
+```{r tidy=FALSE}
+library(rtweet)
+```
+
+
+## httpuv
+
+To authorize rtweet's embedded **rstats2twitter** app via web browser, the **{httpuv}** pakage is required
+
+```{r}
+## install httpuv for browser-based authentication
+install.packages("httpuv")
+```
+
+
+# 1. Searching for tweets
+
+## `search_tweets()`
+
+Search for one or more keyword(s)
+
+```{r}
+rds <- search_tweets("european computational data journalism conference")
+rds
+```
+
+<br>
+
+> *Note*: implicit `AND` between words
+
+## `search_tweets()`
+
+Search for exact phrase
+
+```{r}
+## single quotes around doubles
+ds <- search_tweets('"data science"')
+
+## or escape the quotes
+ds <- search_tweets("\"data science\"")
+ds
+```
+
+## `search_tweets()`
+
+Search for keyword(s) **and** phrase
+
+```{r}
+rpds <- search_tweets("rstats python \"data science\"")
+rpds
+```
+
+## `search_tweets()`
+
++ `search_tweets()` returns 100 most recent matching tweets by default
+
++ Increase `n` to return more (tip: use intervals of 100)
+
+```{r}
+dj <- search_tweets("data journalism", n = 500)
+dj
+```
+
+> Rate limit of 18,000 per fifteen minutes
+
+## `search_tweets()`
+
+**PRO TIP #1**: Get the firehose for free by searching for tweets by
+verified **or** non-verified tweets
+
+```{r}
+fff <- search_tweets("filter:verified OR -filter:verified", n = 10000)
+fff
+```
+
+Visualize second-by-second frequency
+
+```{r}
+ts_plot(fff, "secs")
+```
+
+## `search_tweets()`
+
+**PRO TIP #2**: Use search operators provided by Twitter, e.g.,
+
++ filter by language and exclude retweets and replies
+
+```{r}
+rt <- search_tweets("#datajconf", lang = "en", 
+  include_rts = FALSE, `-filter` = "replies")
+rt
+```
+
++ filter only tweets linking to news articles
+
+```{r}
+nws <- search_tweets("filter:news")
+nws
+```
+
+## `search_tweets()`
+
++ filter only tweets that contain links
+
+```{r}
+links <- search_tweets("filter:links")
+links
+```
+
++ filter only tweets that contain video
+
+```{r}
+vids <- search_tweets("filter:video")
+vids
+```
+
+## `search_tweets()`
+
++ filter only tweets sent `from:{screen_name}` or `to:{screen_name}` certain users
+
+```{r}
+## vector of screen names
+users <- c("cnnbrk", "AP", "nytimes", 
+  "foxnews", "msnbc")
+tousers <- search_tweets(paste0("from:", users, collapse = " OR "))
+tousers
+```
+
+## `search_tweets()`
+
++ filter only tweets with at least 100 favorites or 100 retweets
+
+```{r}
+pop <- search_tweets(
+  "(filter:verified OR -filter:verified) (min_faves:100 OR min_retweets:100)")
+```
+
++ filter by the type of device that posted the tweet.
+
+```{r}
+rt <- search_tweets("lang:en", source = '"Twitter for iPhone"')
+```
+
+
+## `search_tweets()`
+
+**PRO TIP #3**: Search by geolocation (ex: tweets within 25 miles of Columbia, MO)
+
+```{r}
+malaga <- search_tweets(
+  geocode = "36.7647499,-4.5642737,25mi", n = 1000
+)
+malaga
+```
+
+## `search_tweets()`
+
+Use `lat_lng()` to convert geographical data into `lat` and `lng` variables.
+
+```{r}
+malaga <- lat_lng(malaga)
+par(mar = c(0, 0, 0, 0))
+maps::map("world", fill = TRUE, col = "#ffffff", 
+  lwd = .25, mar = c(0, 0, 0, 0), 
+  xlim = c(-8, -2), y = c(34, 40))
+with(malaga, points(lng, lat, pch = 20, col = "red"))
+```
+
+> This code plots geotagged tweets on a map
+
+# 2. User timelines
+
+## `get_timeline()`
+
+Get the most recent tweets posted by a user.
+
+```{r}
+cnn <- get_timeline("cnn")
+cnn
+```
+
+## `get_timeline()`
+
+Get up to the most recent 3,200 tweets (endpoint max) posted by multiple users.
+
+```{r}
+nws <- get_timeline(c("cnn", "foxnews", "msnbc"), n = 3200)
+nws
+```
+
+## `ts_plot()`
+
+Group by `screen_name` and plot hourly frequencies of tweets.
+
+```{r}
+nws %>%
+  dplyr::group_by(screen_name) %>%
+  ts_plot("hours")
+```
+
+
+# 3. User favorites
+
+## `get_favorites()`
+
+Get up to the most recent 3,000 tweets favorited by a user.
+
+```{r}
+nl_favs <- get_favorites("NiemanLab", n = 3000)
+nl_favs
+```
+
+# 5. Getting friends/followers
+
+## Friends/followers
+
+Twitter's API documentation distinguishes between **friends** and **followers**.
+
++ **Friend** refers to an account a given user follows
++ **Follower** refers to an account following a given user
+
+## `get_friends()`
+
+Get user IDs of accounts **followed by** (AKA friends) [@jack](https://twitter.com/jack), the co-founder and CEO of Twitter.
+
+```{r}
+fds <- get_friends("jack")
+fds
+```
+
+## `get_friends()`
+
+Get friends of **multiple** users in a single call.
+
+```{r}
+fds <- get_friends(
+  c("hadleywickham", "NateSilver538", "Nate_Cohn")
+)
+fds
+```
+
+## `get_followers()`
+
+Get user IDs of accounts **following** (AKA followers) [@datajconf] (https://twitter.com/datajconf).
+
+```{r}
+djc <- get_followers("datajconf")
+djc
+```
+
+## `get_followers()`
+
+Unlike friends (limited by Twitter to 5,000), there is **no limit** on the number of followers. 
+
+To get user IDs of all 55(ish) million followers of @realDonaldTrump, you need two things:
+
+1. A stable **internet** connection 
+1. **Time** – approximately five and a half days
+
+## `get_followers()`
+
+Get all of Donald Trump's followers.
+
+```{r}
+## get all of trump's followers
+rdt <- get_followers(
+  "realdonaldtrump", 
+  n = 56000000, 
+  retryonratelimit = TRUE
+)
+```
+
+
+
+# 6. Lookup users
+
+## `lookup_users()`
+
+Lookup users-level (and most recent tweet) associated with vector of `user_id` or `screen_name`.
+
+```{r}
+## vector of users
+users <- c("hadleywickham", "NateSilver538", "Nate_Cohn")
+
+## lookup users twitter data
+usr <- lookup_users(users)
+usr
+```
+
+## `search_users()`
+
+It's also possible to search for users. Twitter will look for matches in user names, screen names, and profile bios.
+
+```{r}
+## search for breaking news accounts
+bkn <- search_users("breaking news")
+bkn
+```
+
+
+# 7. Lists
+
+## `lists_memberships()`
+
++ Get an account's list memberships (lists that include an account)
+
+```{r}
+## lists that include Nate Silver
+nsl <- lists_memberships("NateSilver538")
+nsl
+```
+
+## `lists_members()`
+
++ Get all list members (accounts on a list)
+
+```{r}
+## all members of congress
+cng <- lists_members(owner_user = "cspan", slug = "members-of-congress")
+cng
+```
+
+
+
+# 8. Streaming tweets
+
+## `stream_tweets()`
+
+**Sampling**: small random sample (`~ 1%`) of all publicly available tweets
+
+```{r}
+ss <- stream_tweets("")
+```
+
+**Filtering**: search-like query (up to 400 keywords)
+
+```{r}
+sf <- stream_tweets("mueller,fbi,investigation,trump,realdonaldtrump")
+sf
+```
+
+## `stream_tweets()`
+
+**Tracking**: vector of user ids (up to 5000 user_ids)
+
+```{r}
+## user IDs from congress members (lists_members ex output)
+st <- stream_tweets(cng$user_id)
+```
+
+**Location**: geographical coordinates (1-360 degree location boxes)
+
+```{r}
+## world-wide bounding box
+sl <- stream_tweets(c(-180, -90, 180, 90))
+```
+
+## `stream_tweets()`
+
+The default duration for streams is thirty seconds `timeout = 30`
+
++ Specify specific stream duration in seconds
+
+```{r}
+## stream for 10 minutes
+stm <- stream_tweets(timeout = 60)
+stm
+```
+
+## `stream_tweets()`
+
+Stream JSON data directly to a text file
+
+```{r}
+stream_tweets(timeout = 60, 
+  file_name = "random-stream-2019-07-02.json",
+  parse = FALSE)
+```
+
+Read-in a streamed JSON file
+
+```{r}
+rj <- parse_stream("random-stream-2019-07-02.json")
+```
+
+## `stream_tweets()`
+
+Stream tweets indefinitely.
+
+```{r}
+stream_tweets(timeout = Inf, 
+  file_name = "random-stream-2019-07-02.json",
+  parse = FALSE)
+```
+
+## `lookup_coords()`
+
+A useful convenience function–though it now requires an API key–for quickly looking up coordinates
+
+```{r}
+## stream tweets sent from london
+luk1 <- stream_tweets(q = lookup_coords("London, UK"), timeout = 60)
+luk1
+
+## search tweets sent from london
+luk2 <- search_tweets(geocode = lookup_coords("London, UK"), n = 1000)
+luk2
+```
+
+
+  

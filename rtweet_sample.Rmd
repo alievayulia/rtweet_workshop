@@ -1,0 +1,88 @@
+---
+title: "r_sample"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r}
+##load rtweet and tidyverse
+library(rtweet)
+library(tidyverse)
+```
+```{r}
+##1.Search for the top account matching each of the following queries for Donald Trump and Hillary Clinton
+clinton <- search_users("hillary clinton", n = 1, verbose = FALSE)
+trump <- search_users("donald trump", n = 1, verbose = FALSE)
+clinton
+trump
+```
+```{r}
+##2.Retrieve up to 1,000 user IDs of accounts that follow @realDonaldTrump and @HillaryClinton
+gop <- get_followers("trump", n = 1000)
+dem <- get_followers("clinton", n = 1000)
+```
+```{r}
+##3.Lookup users data for all 2,000 user IDs retrieved in the previous questions.
+
+## get gop users data
+gop_data <- lookup_users(gop$user_id)
+## get dem users data
+dem_data <- lookup_users(dem$user_id)
+
+```
+```{r}
+##4.Using the data collected in the last question, add a 'partisan' variable, identifying the observations for each group as "gop" (Republican) or "dem" (Democrat). Merge the data into a single data frame.
+
+## create "partisan" grouping variable
+gop_data$partisan <- "gop"
+dem_data$partisan <- "dem"
+
+## merge into single data frame
+data <- bind_rows(gop_data, dem_data)
+
+```
+
+```{r}
+##5.Group by partisan [group] and summarise the mean number of friends and followers for each group. Print the summary data.
+
+## PRINT: group by partisan and summarise friends and followers counts
+data %>%
+  group_by(partisan) %>%
+  summarise(
+    friends = mean(friends_count, na.rm = TRUE),
+    followers = mean(followers_count, na.rm = TRUE))
+
+```
+```{r}
+##6.Plot the summary data you calculated in the previous question.
+
+## PLOT: group by partisan and summarise integer vars
+data %>%
+  mutate(Following = factor(partisan, labels = c("clinton", "trump"))) %>%
+  group_by(Following) %>%
+  summarise(
+    friends = mean(friends_count, na.rm = TRUE),
+    followers = mean(followers_count, na.rm = TRUE)) %>%
+  gather(var, count, -Following) %>%
+  ggplot(aes(x = Following, y = count, fill = Following)) + 
+  geom_col() + 
+  facet_wrap(~ var, ncol = 2, scales = "free_y") + 
+  theme_bw(base_size = 10) + 
+  theme(plot.title = element_text(face = "bold")) + 
+  scale_fill_manual(values = c(trump = "red2", clinton = "blue")) + 
+  labs(
+    title = "User stats for followers of Donald Trump and Hillary Clinton",
+    subtitle = "Mean number of friends and followers by group (n = 1000)", 
+    x = NULL, y = "Count")
+
+
+```
+
